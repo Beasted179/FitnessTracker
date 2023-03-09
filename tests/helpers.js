@@ -14,7 +14,7 @@ const createFakeUser = async (username = faker.random.uuid()) => {
   const fakeUserData = {
     username,
     password: faker.internet.password(),
-  };
+  };  
   const user = await createUser(fakeUserData);
   if (!user) {
     throw new Error("createUser didn't return a user");

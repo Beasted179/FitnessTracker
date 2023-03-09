@@ -1,16 +1,95 @@
 // require in the database adapter functions as you write them (createUser, createActivity...)
-// const { } = require('./');
+const {
+  createUser,
+  getUser,
+  getUserById,
+  getUserByUsername} = require('./users');
+const {
+  getAllActivities,
+  getActivityById,
+  getActivityByName,
+  attachActivitiesToRoutines,
+  createActivity,
+  updateActivity
+} = require('./activities')
+const {
+  getRoutineById,
+  getRoutinesWithoutActivities,
+  getAllRoutines,
+  getAllPublicRoutines,
+  getAllRoutinesByUser,
+  getPublicRoutinesByUser,
+  getPublicRoutinesByActivity,
+  createRoutine,
+  updateRoutine,
+  destroyRoutine,
+} = require('./routines')
+const {
+  getRoutineActivityById,
+  addActivityToRoutine,
+  getRoutineActivitiesByRoutine,
+  updateRoutineActivity,
+  destroyRoutineActivity,
+  canEditRoutineActivity,
+} = require('./routine_activities')
 const client = require("./client")
 
 async function dropTables() {
-  console.log("Dropping All Tables...")
-  // drop all tables, in the correct order
+  try {
+    console.log("Dropping All Tables...");
+    await client.query(`DROP TABLE IF EXISTS routine_activities CASCADE`);
+    await client.query(`DROP TABLE IF EXISTS routines CASCADE`);
+    await client.query(`DROP TABLE IF EXISTS activities CASCADE`);
+    await client.query(`DROP TABLE IF EXISTS users CASCADE`);
+    console.log("Finished dropping tables!");
+  } catch (error) {
+    console.error("Error while dropping tables!");
+    throw error;
+  }
 }
 
 async function createTables() {
-  console.log("Starting to build tables...")
-  // create all tables, in the correct order
+  try {
+    console.log("Starting to build tables...")
+    await client.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) UNIQUE NOT NULL,
+      password VARCHAR(50) NOT NULL
+    );
+      CREATE TABLE IF NOT EXISTS activities(
+        id SERIAL PRIMARY KEY,
+        name varchar(255) UNIQUE UNIQUE NULL,
+        description varchar(255) NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS routines(
+        id SERIAL PRIMARY KEY,
+        "creatorId" INTEGER NOT NULL REFERENCES users(id),
+        "isPublic" BOOLEAN DEFAULT false,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        goal TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS routine_activities (
+        id SERIAL PRIMARY KEY,
+        "routineId" INTEGER NOT NULL REFERENCES routines (id),
+        "activityId" INTEGER NOT NULL REFERENCES activities (id),
+        duration INTEGER NOT NULL,
+        count INTEGER NOT NULL,
+        UNIQUE ("routineId", "activityId")
+      );
+    `);
+    console.log('Finished constructing tables!');
+  } catch (error) {
+    console.error('Error constructing tables!');
+
+    throw error;
+  }
 }
+
+  
+  // create all tables, in the correct order
+
+
 
 /* 
 
