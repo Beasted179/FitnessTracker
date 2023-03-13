@@ -1,75 +1,101 @@
-
 const client = require("./client");
 
-async function addActivityToRoutine(routineActivityData) {
+async function addActivityToRoutine({
+  routineId,
+  activityId,
+  count,
+  duration,
+}) {
   try {
-    const result = await client.query(
-      `INSERT INTO routine_activities ("routineId", "activityId", count, duration)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT ("routineId", "activityId") DO UPDATE SET count = excluded.count, duration = excluded.duration
-       RETURNING "routineId", "activityId", count, duration`,
-      [routineActivityData.routineId, routineActivityData.activityId, routineActivityData.count, routineActivityData.duration]
-    );
-    return result.rows[0];
-  } catch (err) {
-    console.error(err);
-    throw new Error("Error adding activity to routine");
+    const { rows: [ routine_activity ] } = await client.query(`
+    INSERT INTO routine_activities("routineId", "activityId", count, duration) 
+    VALUES($1, $2, $3, $4) 
+    RETURNING *;
+    `, [routineId, activityId, count, duration]);
+    
+    return routine_activity;
+  } catch(error) {
+    console.log("Error creating routines!")
   }
 }
 
-
-
-async function getRoutineActivityById({ routineId }) {
-  const query = {
-    text: 'SELECT * FROM routine_activities WHERE "routineId" = $1',
-    values: [routineId],
-  };
-
-  const { rows } = await client.query(query);
-  if (!rows.length) {
-    throw new Error(`Routine activity with routine ID ${routineId} not found`);
-  }
-  return rows[0].id;
-}
-
-const getRoutineActivitiesByRoutine = async (routine) => {
-  try {
-    const { rows } = await client.query(
-      `
-        SELECT *
-        FROM routine_activities
-        WHERE "routineId" = $1
-      `,
-      [routine.id]
-    );
-    return [rows[0].routineId];
+async function getRoutineActivityById(id) {
+  console.log(id)
+  try{
+    const { rows: [routine_activity] } = await client.query(`
+    SELECT * 
+    FROM routine_activities
+    WHERE id =${id.id};
+    `);
+    console.log(routine_activity)
+    return routine_activity;
   } catch (error) {
-    console.error("Error in getRoutineActivitiesByRoutine: ", error);
-    throw error;
+    console.log("Error getting routines by id!")
   }
-};
+}
 
-async function updateRoutineActivity(fields) {
+async function getRoutineActivitiesByRoutine({ id }) {
+  try{
+    const { rows: routine_activity } = await client.query(`
+    SELECT * 
+    FROM routine_activities
+    WHERE "routineId" =${id};
+    `);
+
+    return routine_activity;
+  } catch (error) {
+    console.log("Error getting routine activity by routine")
+  }
+}
+
+async function updateRoutineActivity({ id, ...fields }) {
+  const setString = Object.keys(fields).map(
+    (key, index) => `"${ key }"=$${ index + 1 }`
+  ).join(', ');
+
+  if (setString.length === 0) {
+    return;
+  }
+
   try {
-    const result = await client.query(
-      `
+      const { rows: [ routine_activity ] } = await client.query(`
         UPDATE routine_activities
-        SET count = $1, duration = $2
-        WHERE "routineId" = $3
-        RETURNING "routineId", count, duration
-      `,
-      [fields.count,fields.duration, fields.routineId]
-    );
-    return result.rows[0];
+        SET ${ setString }
+        WHERE id=${id}
+        RETURNING *;
+      `, Object.values(fields));
+
+  return routine_activity;
   } catch (error) {
-    console.error("Error in updateRoutineActivity:", error);
-    throw error;
+    console.log("Error updating the routine activity")
   }
 }
 
-async function destroyRoutineActivity(id) {}
+async function destroyRoutineActivity(id) {
+  const { rows: [routine_activity] } = await client.query(`
+  DELETE FROM routine_activities
+  WHERE id = $1
+  RETURNING *;
+  `, [id]);
 
-async function canEditRoutineActivity(routineActivityId, userId) {}
+  return routine_activity;
+}
+
+
+async function canEditRoutineActivity(routineActivityId, userId) {
+  try{
+    const { rows: [routine] } = await client.query(`
+    SELECT *
+    FROM routine_activities
+    JOIN routines ON routine_activities."routineId" = routines.id AND routine_activities.id =$1;
+    `, [routineActivityId]);
+
+    return routine.creatorId === userId;
+
+  } catch (error) {
+    console.log("Error editing routine activity!")
+  }
+}
 
 module.exports = {
   getRoutineActivityById,
